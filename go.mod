@@ -3,7 +3,6 @@ module ghorg-wrapper
 go 1.24.4
 
 require (
-	github.com/IBM/fp-go v1.0.153
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0

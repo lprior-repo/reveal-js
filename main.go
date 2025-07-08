@@ -4,64 +4,53 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
+
+	ants "github.com/panjf2000/ants/v2"
 )
 
-// DRY: Config moved to fp.go to avoid duplication
-
-// ValidateAndSetDefaults validates configuration and sets optimal defaults
-func (c *Config) ValidateAndSetDefaults() error {
-	// Sanitize and validate target directory
-	c.TargetDir = strings.TrimSpace(c.TargetDir)
-	if c.TargetDir == "" {
-		return fmt.Errorf("target_dir is required")
-	}
-
-	// Validate organizations (this also sanitizes them)
-	if len(c.Orgs) == 0 {
-		return fmt.Errorf("at least one organization must be specified")
-	}
-
-	// Set optimal defaults based on workload
-	if c.Concurrency <= 0 {
-		c.Concurrency = min(25, max(1, len(c.Orgs))) // Scale with org count
-	}
-
-	if c.BatchSize <= 0 {
-		c.BatchSize = min(50, max(1, len(c.Orgs))) // Scale with org count
-	}
-
-	return nil
+// Legacy functions for test compatibility
+func NewGhorgOrgCloner() *GhorgOrgCloner {
+	return &GhorgOrgCloner{cloner: CreateGhorgOrgCloner()}
 }
 
-// Helper function for maximum of two integers
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
+func NewEnvConfigLoader() *EnvConfigLoader {
+	return &EnvConfigLoader{loader: CreateEnvConfigLoader()}
 }
 
-// processOrgsFromEnv orchestrates the workflow using functional architecture with env config
+func (l *EnvConfigLoader) LoadConfig(ctx context.Context, envFilePath string) (*Config, error) {
+	return l.loader(ctx, envFilePath)
+}
+
+func (c *GhorgOrgCloner) CloneOrg(ctx context.Context, org, targetDir, token string, concurrency int) error {
+	return c.cloner(ctx, org, targetDir, token, concurrency)
+}
+
 func processOrgsFromEnv(envFilePath string) error {
-	// Create functional adapters (side effect implementations)
-	configLoader := CreateEnvConfigLoader()
-	orgCloner := CreateGhorgOrgCloner()
-
-	// Execute workflow using functional composition (Action -> Calculation -> Action)
 	ctx := context.Background()
-	return ExecuteWorkflow(ctx, envFilePath, configLoader, orgCloner)
+	return ExecuteWorkflow(ctx, envFilePath, CreateEnvConfigLoader(), CreateGhorgOrgCloner())
+}
+
+func validateConfig(config *Config) error {
+	return config.ValidateAndSetDefaults()
+}
+
+func createBatchProcessor(logInfo, logError LogFunc, progressTracker *ProgressTracker, progressReporter ProgressFunc) BatchProcessor {
+	return func(ctx context.Context, batch Batch, pool interface{}, cloner OrgCloner, config *Config) []error {
+		if poolPtr, ok := pool.(*ants.Pool); ok {
+			return processBatch(ctx, batch, poolPtr, cloner, config)
+		}
+		return []error{createError("invalid pool type")}
+	}
 }
 
 func main() {
 	var envFilePath string
-
-	// Check if .env file path is provided as argument
 	if len(os.Args) > 1 {
 		envFilePath = os.Args[1]
 	}
 
-	err := processOrgsFromEnv(envFilePath)
+	ctx := context.Background()
+	err := ExecuteWorkflow(ctx, envFilePath, CreateEnvConfigLoader(), CreateGhorgOrgCloner())
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
