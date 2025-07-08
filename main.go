@@ -3,99 +3,67 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
 	"strings"
-	"sync"
-	"time"
-
-	"golang.org/x/sync/errgroup"
 )
 
+// DRY: Config moved to fp.go to avoid duplication
+
+// ValidateAndSetDefaults validates configuration and sets optimal defaults
+func (c *Config) ValidateAndSetDefaults() error {
+	// Sanitize and validate target directory
+	c.TargetDir = strings.TrimSpace(c.TargetDir)
+	if c.TargetDir == "" {
+		return fmt.Errorf("target_dir is required")
+	}
+
+	// Validate organizations (this also sanitizes them)
+	if len(c.Orgs) == 0 {
+		return fmt.Errorf("at least one organization must be specified")
+	}
+
+	// Set optimal defaults based on workload
+	if c.Concurrency <= 0 {
+		c.Concurrency = min(25, max(1, len(c.Orgs))) // Scale with org count
+	}
+
+	if c.BatchSize <= 0 {
+		c.BatchSize = min(50, max(1, len(c.Orgs))) // Scale with org count
+	}
+
+	return nil
+}
+
+// Helper function for maximum of two integers
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// processOrgsFromEnv orchestrates the workflow using functional architecture with env config
+func processOrgsFromEnv(envFilePath string) error {
+	// Create functional adapters (side effect implementations)
+	configLoader := CreateEnvConfigLoader()
+	orgCloner := CreateGhorgOrgCloner()
+
+	// Execute workflow using functional composition (Action -> Calculation -> Action)
+	ctx := context.Background()
+	return ExecuteWorkflow(ctx, envFilePath, configLoader, orgCloner)
+}
+
 func main() {
-	startTime := time.Now()
+	var envFilePath string
 
-	fmt.Printf("🚀 Terraform Cloud Migration Analyzer\n")
-	fmt.Printf("📖 Loading configuration...\n")
+	// Check if .env file path is provided as argument
+	if len(os.Args) > 1 {
+		envFilePath = os.Args[1]
+	}
 
-	config, err := LoadConfig()
+	err := processOrgsFromEnv(envFilePath)
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
-	}
-
-	if config.GitHubToken == "" {
-		fmt.Printf("⚠️  No GitHub token found. Add GITHUB_TOKEN to .env file\n")
-		fmt.Printf("⚠️  Using unauthenticated requests with strict rate limits\n")
-	} else {
-		fmt.Printf("🔐 GitHub token loaded\n")
-	}
-
-	fmt.Printf("📋 Organizations to analyze: %v\n", config.Organizations)
-
-	// Create services
-	githubService := NewGitHubService(config.GitHubToken, config.Concurrency)
-	cacheService := NewFileCache(config.CacheFile)
-	fileAnalyzer := NewFileAnalyzer()
-
-	services := &Services{
-		GitHub:   githubService,
-		Cache:    cacheService,
-		Analyzer: fileAnalyzer,
-	}
-
-	// Analyze all organizations
-	var results []OrganizationResult
-	var mu sync.Mutex
-
-	g, ctx := errgroup.WithContext(context.Background())
-	g.SetLimit(len(config.Organizations))
-
-	for _, org := range config.Organizations {
-		org := org
-		g.Go(func() error {
-			result, err := AnalyzeOrganization(ctx, org, services, config)
-			if err != nil {
-				log.Printf("❌ Error analyzing %s: %v", org, err)
-				return nil
-			}
-
-			mu.Lock()
-			results = append(results, *result)
-			mu.Unlock()
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		log.Printf("❌ Some analyses failed")
-	}
-
-	if len(results) == 0 {
-		log.Fatal("No organizations were successfully analyzed")
-	}
-
-	summary := CalculateSummary(results, time.Since(startTime))
-	finalResult := AnalysisResult{
-		Organizations: results,
-		Summary:       summary,
-		AnalyzedAt:    time.Now(),
-	}
-
-	if err := WriteJSONFile(config.OutputFile, finalResult); err != nil {
-		log.Fatalf("Failed to write output: %v", err)
-	}
-
-	// Generate CSV reports
-	outputPrefix := strings.TrimSuffix(config.OutputFile, ".json")
-	if err := WriteCSVReports(results, outputPrefix); err != nil {
-		log.Printf("⚠️  Failed to write CSV reports: %v", err)
-	}
-
-	PrintSummary(summary, config.OutputFile)
-
-	// Optional: Update DynamoDB if configured
-	if config.UseDynamoDB {
-		if err := UpdateDynamoDB(ctx, config, results); err != nil {
-			log.Printf("⚠️  Failed to update DynamoDB: %v", err)
-		}
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
 	}
 }
