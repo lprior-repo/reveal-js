@@ -698,7 +698,7 @@ func TestCreateBatches(t *testing.T) {
 		assert.Equal(t, []string{"org1", "org2", "org3"}, result[0].Orgs)
 	})
 
-	t.Run("Given many orgs with default size When creating batches Then should cap at 50", func(t *testing.T) {
+	t.Run("Given many orgs with default size When creating batches Then should use all orgs", func(t *testing.T) {
 		// Given
 		orgs := make([]string, 100)
 		for i := 0; i < 100; i++ {
@@ -710,9 +710,10 @@ func TestCreateBatches(t *testing.T) {
 		result := createBatches(orgs, size)
 
 		// Then
-		assert.Len(t, result, 2) // 100 orgs / 50 batch size = 2 batches
-		assert.Len(t, result[0].Orgs, 50)
-		assert.Len(t, result[1].Orgs, 50)
+		assert.Len(t, result, 1) // 100 orgs in single batch, no limit
+		if len(result) > 0 {
+			assert.Len(t, result[0].Orgs, 100)
+		}
 	})
 }
 

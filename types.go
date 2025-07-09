@@ -46,14 +46,32 @@ type ProgressTracker struct {
 	CurrentBatch     int
 }
 
+// Runtime metrics tracking
+type RuntimeMetrics struct {
+	StartTime        time.Time
+	ActiveGoroutines int32
+	PeakGoroutines   int32
+	TotalSpawned     int64
+	TotalRepos       int64
+	ProcessedRepos   int64
+	RemainingRepos   int64
+	mutex            sync.RWMutex
+}
+
 type ProgressUpdate struct {
-	Org           string
-	BatchNumber   int
-	CompletedOrgs int
-	TotalOrgs     int
-	ElapsedTime   time.Duration
-	EstimatedETA  time.Duration
-	Status        string
+	Org              string
+	BatchNumber      int
+	CompletedOrgs    int
+	TotalOrgs        int
+	ElapsedTime      time.Duration
+	EstimatedETA     time.Duration
+	Status           string
+	ActiveGoroutines int32
+	PeakGoroutines   int32
+	TotalSpawned     int64
+	TotalRepos       int64
+	ProcessedRepos   int64
+	RemainingRepos   int64
 }
 
 // Functional types

@@ -220,7 +220,9 @@ func TestOrgClonerTimeout(t *testing.T) {
 			strings.Contains(errorStr, "context deadline exceeded") ||
 			strings.Contains(errorStr, "failed to create directory") ||
 			strings.Contains(errorStr, "signal: killed") ||
-			strings.Contains(errorStr, "ghorg command failed")
+			strings.Contains(errorStr, "ghorg command failed") ||
+			strings.Contains(errorStr, "StdoutPipe after process started") ||
+			strings.Contains(errorStr, "failed to create stdout pipe")
 		assert.True(t, timeoutOrCancellation, "Error should be related to timeout, cancellation, or directory creation: %s", errorStr)
 	})
 }

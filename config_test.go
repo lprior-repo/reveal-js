@@ -110,7 +110,7 @@ func TestConfigValidateAndSetDefaults(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, 2, config.Concurrency) // min(25, max(1, len(orgs)))
+		assert.Equal(t, 1000, config.Concurrency) // High default, no limits
 	})
 
 	t.Run("Given negative concurrency When calling ValidateAndSetDefaults Then should set default", func(t *testing.T) {
@@ -126,7 +126,7 @@ func TestConfigValidateAndSetDefaults(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, 2, config.Concurrency)
+		assert.Equal(t, 1000, config.Concurrency)
 	})
 
 	t.Run("Given zero batch size When calling ValidateAndSetDefaults Then should set default", func(t *testing.T) {
@@ -142,7 +142,7 @@ func TestConfigValidateAndSetDefaults(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, 2, config.BatchSize) // min(50, max(1, len(orgs)))
+		assert.Equal(t, 1000, config.BatchSize) // High default, no limits
 	})
 
 	t.Run("Given large number of orgs When calling ValidateAndSetDefaults Then should cap concurrency and batch size", func(t *testing.T) {
@@ -163,8 +163,8 @@ func TestConfigValidateAndSetDefaults(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, 25, config.Concurrency) // min(25, max(1, len(orgs)))
-		assert.Equal(t, 50, config.BatchSize)   // min(50, max(1, len(orgs)))
+		assert.Equal(t, 1000, config.Concurrency) // High default, no org-based limits
+		assert.Equal(t, 1000, config.BatchSize)   // High default, no org-based limits
 	})
 }
 
@@ -649,8 +649,8 @@ func TestConfigEdgeCases(t *testing.T) {
 
 		// Then
 		assert.NoError(t, err)
-		assert.Equal(t, 25, config.Concurrency) // Should be capped at 25
-		assert.Equal(t, 50, config.BatchSize)   // Should be capped at 50
+		assert.Equal(t, 1000, config.Concurrency) // No caps, keeps user value
+		assert.Equal(t, 1000, config.BatchSize)   // No caps, keeps user value
 	})
 
 	t.Run("Given config with unicode org names When validating Then should handle correctly", func(t *testing.T) {

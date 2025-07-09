@@ -60,6 +60,9 @@ func createLoggers() (LogFunc, LogFunc) {
 
 // BoundedBuffer implementation for managing command output
 func NewBoundedBuffer(maxSize int) *BoundedBuffer {
+	if maxSize <= 0 {
+		maxSize = 1 // Minimum size to prevent panics
+	}
 	return &BoundedBuffer{
 		buffer:  make([]string, maxSize),
 		maxSize: maxSize,
@@ -123,6 +126,9 @@ func expandPath(path, homeDir string) string {
 
 	if len(path) >= 2 && path[:2] == "~/" {
 		if path == "~/" {
+			if homeDir == "" {
+				return "/"
+			}
 			return homeDir
 		}
 		if homeDir == "" {
@@ -185,7 +191,7 @@ func createBatches(orgs []string, size int) []Batch {
 
 	batchSize := size
 	if batchSize <= 0 {
-		batchSize = max(1, min(len(orgs), 100)) // Default to reasonable value but allow large batches
+		batchSize = 1000 // High default batch size, no org-based limits
 	} else {
 		batchSize = min(batchSize, len(orgs)) // No hard upper limit - respect user's choice
 	}
@@ -204,9 +210,11 @@ func createBatches(orgs []string, size int) []Batch {
 // Error collection utility
 func collectAndReportErrors(allErrors []error, logInfo LogFunc) error {
 	if len(allErrors) == 0 {
-		logInfo("All batches processed successfully",
-			slog.Int("error_count", 0),
-			slog.String("operation", "execution_successful"))
+		if logInfo != nil {
+			logInfo("All batches processed successfully",
+				slog.Int("error_count", 0),
+				slog.String("operation", "execution_successful"))
+		}
 		return nil
 	}
 

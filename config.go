@@ -31,11 +31,11 @@ func (c *Config) ValidateAndSetDefaults() error {
 	c.Orgs = validOrgs
 
 	if c.Concurrency <= 0 {
-		c.Concurrency = max(1, min(len(c.Orgs), 50)) // Default to reasonable value but allow override
+		c.Concurrency = 1000 // High default concurrency, no org-based limits
 	}
 
 	if c.BatchSize <= 0 {
-		c.BatchSize = max(1, min(len(c.Orgs), 100)) // Default to reasonable value but allow override
+		c.BatchSize = 1000 // High default batch size, no org-based limits
 	}
 
 	return nil

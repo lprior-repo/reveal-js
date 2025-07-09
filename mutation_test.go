@@ -22,7 +22,7 @@ func TestConfigValidationMutations(t *testing.T) {
 	t.Run("Config mutation - nil pointer safety", func(t *testing.T) {
 		// Mutation: Test with nil config
 		var config *Config = nil
-		
+
 		// Should panic or handle gracefully
 		assert.Panics(t, func() {
 			config.ValidateAndSetDefaults()
@@ -97,7 +97,7 @@ VALUE`
 
 		// Should handle malformed file gracefully
 		_, err := loader(ctx, envFile)
-		
+
 		// May succeed or fail depending on how env parser handles malformed data
 		// The key is that it shouldn't panic
 		_ = err // Use err to avoid unused variable warning
@@ -122,7 +122,7 @@ GHORG_BATCH_SIZE=3.14159`
 
 		// Should handle invalid numbers gracefully (likely use defaults)
 		config, err := loader(ctx, envFile)
-		
+
 		if err == nil {
 			// If parsing succeeded, numeric fields should have valid defaults
 			assert.True(t, config.Concurrency >= 0)
@@ -149,7 +149,7 @@ func TestUtilityMutationTesting(t *testing.T) {
 	t.Run("BoundedBuffer mutation - concurrent access corruption", func(t *testing.T) {
 		// Mutation: Concurrent access without proper synchronization test
 		buffer := NewBoundedBuffer(10)
-		
+
 		// Simulate concurrent writes (buffer should handle this safely)
 		done := make(chan bool)
 		for i := 0; i < 5; i++ {
@@ -180,7 +180,7 @@ func TestUtilityMutationTesting(t *testing.T) {
 
 		// Should handle large slices without overflow
 		result := chunkSlice(largeSlice, 100000)
-		
+
 		// Verify no data loss occurred
 		totalItems := 0
 		for _, chunk := range result {
@@ -202,12 +202,12 @@ func TestUtilityMutationTesting(t *testing.T) {
 		for _, path := range maliciousPaths {
 			// Should handle malicious paths safely
 			result := expandPath(path, "/home/user")
-			
+
 			// Key test: function should not panic and should return deterministic result
 			assert.NotPanics(t, func() {
 				expandPath(path, "/home/user")
 			})
-			
+
 			// Result should be predictable (just string manipulation)
 			if strings.HasPrefix(path, "~/") {
 				expected := "/home/user" + path[1:]
@@ -234,12 +234,12 @@ func TestUtilityMutationTesting(t *testing.T) {
 		for _, attempt := range injectionAttempts {
 			// Should build command safely without executing injection
 			result := buildCommand(attempt.org, attempt.targetDir, attempt.token, attempt.concurrency)
-			
+
 			// Should not panic
 			assert.NotPanics(t, func() {
 				buildCommand(attempt.org, attempt.targetDir, attempt.token, attempt.concurrency)
 			})
-			
+
 			// Result should be a valid command slice
 			assert.True(t, len(result) > 0)
 			assert.Equal(t, "clone", result[0])
@@ -259,7 +259,7 @@ func TestProgressMutationTesting(t *testing.T) {
 
 		// Should handle extreme time differences
 		update := calculateProgress(tracker)
-		
+
 		// Should not panic or produce invalid results
 		assert.True(t, update.ElapsedTime > 0)
 		assert.True(t, update.EstimatedETA >= 0)
@@ -281,7 +281,7 @@ func TestProgressMutationTesting(t *testing.T) {
 				assert.NotPanics(t, func() {
 					calculateProgress(tracker)
 				})
-				
+
 				update := calculateProgress(tracker)
 				// Should produce valid results even with edge cases
 				assert.True(t, update.EstimatedETA >= 0)
@@ -309,7 +309,7 @@ func TestWorkflowExecutionMutations(t *testing.T) {
 		// Should handle resource exhaustion gracefully
 		err := config.ValidateAndSetDefaults()
 		assert.NoError(t, err)
-		
+
 		// Should cap values to reasonable limits
 		assert.True(t, config.Concurrency <= 25)
 		assert.True(t, config.BatchSize <= 50)
@@ -318,12 +318,12 @@ func TestWorkflowExecutionMutations(t *testing.T) {
 	t.Run("Workflow mutation - nil function parameters", func(t *testing.T) {
 		// Mutation: Test with nil function parameters
 		ctx := context.Background()
-		
+
 		// Should handle nil functions appropriately (panic or error)
 		assert.Panics(t, func() {
 			ExecuteWorkflow(ctx, "", nil, CreateGhorgOrgCloner())
 		})
-		
+
 		assert.Panics(t, func() {
 			ExecuteWorkflow(ctx, "", CreateEnvConfigLoader(), nil)
 		})
@@ -346,7 +346,7 @@ func TestMutationProperties(t *testing.T) {
 					originalValidCount++
 				}
 			}
-			
+
 			// Mutate one random element to empty/whitespace
 			if len(orgs) > 1 {
 				corruptIndex := rapid.IntRange(0, len(orgs)-1).Draw(t, "corruptIndex")
@@ -354,17 +354,17 @@ func TestMutationProperties(t *testing.T) {
 			}
 
 			batchSize := rapid.IntRange(1, 1000).Draw(t, "batchSize")
-			
+
 			// Function should handle corrupted input gracefully
 			batches := createBatches(orgs, batchSize)
-			
+
 			// Property: createBatches doesn't filter - it preserves all input
 			// (filtering happens at config validation level)
 			actualOrgs := 0
 			for _, batch := range batches {
 				actualOrgs += len(batch.Orgs)
 			}
-			
+
 			// Should preserve all orgs (including corrupted ones)
 			assert.Equal(t, len(orgs), actualOrgs)
 		})
@@ -375,12 +375,12 @@ func TestMutationProperties(t *testing.T) {
 			// Generate potentially malformed paths
 			path := rapid.String().Draw(t, "path")
 			homeDir := rapid.String().Draw(t, "homeDir")
-			
+
 			// Function should never panic regardless of input
 			assert.NotPanics(t, func() {
 				expandPath(path, homeDir)
 			})
-			
+
 			// Result should be deterministic
 			result1 := expandPath(path, homeDir)
 			result2 := expandPath(path, homeDir)
@@ -393,21 +393,21 @@ func TestMutationProperties(t *testing.T) {
 func TestErrorInjectionMutations(t *testing.T) {
 	t.Run("Error injection - simulated system failures", func(t *testing.T) {
 		// Mutation: Inject errors at various points to test resilience
-		
+
 		// Test config loading with simulated file system errors
 		ctx := context.Background()
 		loader := CreateEnvConfigLoader()
-		
+
 		// Test with non-existent file (simulated FS error)
 		_, err := loader(ctx, "/definitely/does/not/exist/file.env")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to load .env file")
-		
+
 		// Test with permission denied scenario (create file without read permission)
 		tmpDir := t.TempDir()
 		restrictedFile := filepath.Join(tmpDir, "restricted.env")
 		require.NoError(t, os.WriteFile(restrictedFile, []byte("GHORG_TARGET_DIR=/tmp/test\nGHORG_ORGS=org1"), 0000))
-		
+
 		_, err = loader(ctx, restrictedFile)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to load .env file")
@@ -415,18 +415,18 @@ func TestErrorInjectionMutations(t *testing.T) {
 
 	t.Run("Error injection - memory pressure simulation", func(t *testing.T) {
 		// Mutation: Create conditions that simulate memory pressure
-		
+
 		// Create very large string slices to test memory handling
 		largeData := make([]string, 100000)
 		for i := range largeData {
 			largeData[i] = strings.Repeat("x", 1000) // Large strings
 		}
-		
+
 		// Functions should handle large data without panic
 		assert.NotPanics(t, func() {
 			chunkSlice(largeData, 1000)
 		})
-		
+
 		// Test BoundedBuffer with rapid insertions
 		buffer := NewBoundedBuffer(1000)
 		assert.NotPanics(t, func() {
@@ -441,19 +441,19 @@ func TestErrorInjectionMutations(t *testing.T) {
 func TestConcurrencyMutations(t *testing.T) {
 	t.Run("Concurrency mutation - race condition detection", func(t *testing.T) {
 		// Mutation: Create scenarios likely to trigger race conditions
-		
+
 		numGoroutines := 100
 		iterations := 1000
-		
+
 		// Test BoundedBuffer concurrent access
 		buffer := NewBoundedBuffer(100)
 		done := make(chan bool, numGoroutines)
-		
+
 		for i := 0; i < numGoroutines; i++ {
 			go func(id int) {
 				for j := 0; j < iterations; j++ {
 					buffer.Write(fmt.Sprintf("goroutine%d-iter%d", id, j))
-					
+
 					// Randomly read as well to create read/write contention
 					if j%10 == 0 {
 						buffer.GetAll()
@@ -462,12 +462,12 @@ func TestConcurrencyMutations(t *testing.T) {
 				done <- true
 			}(i)
 		}
-		
+
 		// Wait for all goroutines
 		for i := 0; i < numGoroutines; i++ {
 			<-done
 		}
-		
+
 		// Buffer should be in consistent state
 		result := buffer.GetAll()
 		assert.True(t, len(result) <= 100)
@@ -476,7 +476,7 @@ func TestConcurrencyMutations(t *testing.T) {
 	t.Run("Concurrency mutation - progress tracking race conditions", func(t *testing.T) {
 		// Mutation: Test progress tracking under concurrent updates
 		tracker := createProgressTracker(1000, 10)
-		
+
 		// Mock progress reporter that could be called concurrently
 		var reportCount int
 		progressReporter := func(update ProgressUpdate) {
@@ -484,11 +484,11 @@ func TestConcurrencyMutations(t *testing.T) {
 			// Simulate work
 			time.Sleep(1 * time.Microsecond)
 		}
-		
+
 		// Simulate concurrent progress reporting
 		numReporters := 50
 		done := make(chan bool, numReporters)
-		
+
 		for i := 0; i < numReporters; i++ {
 			go func(id int) {
 				for j := 0; j < 20; j++ {
@@ -499,12 +499,12 @@ func TestConcurrencyMutations(t *testing.T) {
 				done <- true
 			}(i)
 		}
-		
+
 		// Wait for all reporters
 		for i := 0; i < numReporters; i++ {
 			<-done
 		}
-		
+
 		// Should have processed all reports without panic
 		assert.True(t, reportCount > 0)
 	})
@@ -514,7 +514,7 @@ func TestConcurrencyMutations(t *testing.T) {
 func TestInputValidationMutations(t *testing.T) {
 	t.Run("Validation mutation - bypass attempts", func(t *testing.T) {
 		// Mutation: Attempt to bypass validation with crafted inputs
-		
+
 		bypassAttempts := []*Config{
 			// Attempt 1: Unicode whitespace that might not be caught by strings.TrimSpace
 			{
@@ -532,14 +532,14 @@ func TestInputValidationMutations(t *testing.T) {
 				TargetDir: "/tmp/test\x00hidden",
 			},
 		}
-		
+
 		for i, config := range bypassAttempts {
 			t.Run(fmt.Sprintf("bypass_attempt_%d", i), func(t *testing.T) {
 				// Validation should not panic
 				assert.NotPanics(t, func() {
 					config.ValidateAndSetDefaults()
 				})
-				
+
 				// Should either succeed with cleaned input or fail appropriately
 				err := config.ValidateAndSetDefaults()
 				if err == nil {

@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	ants "github.com/panjf2000/ants/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	ants "github.com/panjf2000/ants/v2"
 	"pgregory.net/rapid"
 )
 
@@ -19,7 +19,7 @@ func TestExecuteWorkflow(t *testing.T) {
 		// Given
 		ctx := context.Background()
 		configPath := ""
-		
+
 		// Mock config loader that returns valid config
 		mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 			return &Config{
@@ -30,7 +30,7 @@ func TestExecuteWorkflow(t *testing.T) {
 				GitHubToken: "test-token",
 			}, nil
 		}
-		
+
 		// Mock cloner that succeeds
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return nil
@@ -48,11 +48,11 @@ func TestExecuteWorkflow(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
 		configPath := ""
-		
+
 		mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 			return &Config{Orgs: []string{"org1"}, TargetDir: "/tmp/test"}, nil
 		}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return nil
 		}
@@ -69,11 +69,11 @@ func TestExecuteWorkflow(t *testing.T) {
 		// Given
 		ctx := context.Background()
 		configPath := ""
-		
+
 		mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 			return nil, fmt.Errorf("config loading failed")
 		}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return nil
 		}
@@ -90,14 +90,14 @@ func TestExecuteWorkflow(t *testing.T) {
 		// Given
 		ctx := context.Background()
 		configPath := ""
-		
+
 		mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 			return &Config{
 				Orgs:      []string{}, // Invalid - empty orgs
 				TargetDir: "/tmp/test",
 			}, nil
 		}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return nil
 		}
@@ -114,7 +114,7 @@ func TestExecuteWorkflow(t *testing.T) {
 		// Given
 		ctx := context.Background()
 		configPath := ""
-		
+
 		mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 			return &Config{
 				Orgs:        []string{"org1"},
@@ -123,7 +123,7 @@ func TestExecuteWorkflow(t *testing.T) {
 				BatchSize:   1,
 			}, nil
 		}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return fmt.Errorf("cloning failed for %s", org)
 		}
@@ -144,7 +144,7 @@ func TestExecutePlan(t *testing.T) {
 		ctx := context.Background()
 		plan := ProcessingPlan{Batches: []Batch{}, TotalOrgs: 0}
 		config := &Config{Concurrency: 1}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return nil
 		}
@@ -170,10 +170,10 @@ func TestExecutePlan(t *testing.T) {
 			TargetDir:   "/tmp/test",
 			GitHubToken: "test-token",
 		}
-		
+
 		var processedOrgs []string
 		var mu sync.Mutex
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			mu.Lock()
 			processedOrgs = append(processedOrgs, org)
@@ -207,10 +207,10 @@ func TestExecutePlan(t *testing.T) {
 			TargetDir:   "/tmp/test",
 			GitHubToken: "test-token",
 		}
-		
+
 		var processedOrgs []string
 		var mu sync.Mutex
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			mu.Lock()
 			processedOrgs = append(processedOrgs, org)
@@ -242,7 +242,7 @@ func TestExecutePlan(t *testing.T) {
 			Concurrency: 2,
 			TargetDir:   "/tmp/test",
 		}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return fmt.Errorf("cloning failed for %s", org)
 		}
@@ -269,7 +269,7 @@ func TestExecutePlan(t *testing.T) {
 		config := &Config{
 			Concurrency: -1, // Invalid concurrency to force pool creation failure
 		}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return nil
 		}
@@ -292,7 +292,7 @@ func TestProcessBatches(t *testing.T) {
 			{Orgs: []string{"org1", "org2"}, BatchNumber: 1},
 			{Orgs: []string{"org3"}, BatchNumber: 2},
 		}
-		
+
 		// Create a real ants pool for testing
 		pool, err := ants.NewPool(2, ants.WithOptions(ants.Options{
 			PreAlloc:    true,
@@ -300,17 +300,17 @@ func TestProcessBatches(t *testing.T) {
 		}))
 		require.NoError(t, err)
 		defer pool.Release()
-		
+
 		config := &Config{
 			TargetDir:   "/tmp/test",
 			GitHubToken: "test-token",
 			Concurrency: 2,
 		}
-		
+
 		logInfo, _ := createLoggers()
 		progressTracker := createProgressTracker(3, 2)
 		progressReporter := createProgressReporter(logInfo)
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return nil
 		}
@@ -328,23 +328,23 @@ func TestProcessBatches(t *testing.T) {
 		batches := []Batch{
 			{Orgs: []string{"org1", "org2"}, BatchNumber: 1},
 		}
-		
+
 		pool, err := ants.NewPool(2, ants.WithOptions(ants.Options{
 			PreAlloc:    true,
 			Nonblocking: false,
 		}))
 		require.NoError(t, err)
 		defer pool.Release()
-		
+
 		config := &Config{
 			TargetDir:   "/tmp/test",
 			Concurrency: 2,
 		}
-		
+
 		logInfo, _ := createLoggers()
 		progressTracker := createProgressTracker(2, 1)
 		progressReporter := createProgressReporter(logInfo)
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return fmt.Errorf("cloning failed for %s", org)
 		}
@@ -364,23 +364,23 @@ func TestProcessBatches(t *testing.T) {
 		batches := []Batch{
 			{Orgs: []string{"org1"}, BatchNumber: 1},
 		}
-		
+
 		pool, err := ants.NewPool(1, ants.WithOptions(ants.Options{
 			PreAlloc:    true,
 			Nonblocking: false,
 		}))
 		require.NoError(t, err)
 		defer pool.Release()
-		
+
 		config := &Config{
 			TargetDir:   "/tmp/test",
 			Concurrency: 1,
 		}
-		
+
 		logInfo, _ := createLoggers()
 		progressTracker := createProgressTracker(1, 1)
 		progressReporter := createProgressReporter(logInfo)
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return nil
 		}
@@ -400,19 +400,19 @@ func TestProcessBatches(t *testing.T) {
 		// Given
 		ctx := context.Background()
 		batches := []Batch{}
-		
+
 		pool, err := ants.NewPool(1, ants.WithOptions(ants.Options{
 			PreAlloc:    true,
 			Nonblocking: false,
 		}))
 		require.NoError(t, err)
 		defer pool.Release()
-		
+
 		config := &Config{Concurrency: 1}
 		logInfo, _ := createLoggers()
 		progressTracker := createProgressTracker(0, 0)
 		progressReporter := createProgressReporter(logInfo)
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return nil
 		}
@@ -428,29 +428,29 @@ func TestProcessBatches(t *testing.T) {
 		// Given
 		ctx := context.Background()
 		batches := []Batch{
-			{Orgs: []string{}, BatchNumber: 1},      // Empty batch
+			{Orgs: []string{}, BatchNumber: 1},       // Empty batch
 			{Orgs: []string{"org1"}, BatchNumber: 2}, // Non-empty batch
 		}
-		
+
 		pool, err := ants.NewPool(1, ants.WithOptions(ants.Options{
 			PreAlloc:    true,
 			Nonblocking: false,
 		}))
 		require.NoError(t, err)
 		defer pool.Release()
-		
+
 		config := &Config{
 			TargetDir:   "/tmp/test",
 			Concurrency: 1,
 		}
-		
+
 		logInfo, _ := createLoggers()
 		progressTracker := createProgressTracker(1, 2)
 		progressReporter := createProgressReporter(logInfo)
-		
+
 		var processedOrgs []string
 		var mu sync.Mutex
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			mu.Lock()
 			processedOrgs = append(processedOrgs, org)
@@ -477,23 +477,23 @@ func TestProcessBatch(t *testing.T) {
 			Orgs:        []string{"org1", "org2", "org3"},
 			BatchNumber: 1,
 		}
-		
+
 		pool, err := ants.NewPool(3, ants.WithOptions(ants.Options{
 			PreAlloc:    true,
 			Nonblocking: false,
 		}))
 		require.NoError(t, err)
 		defer pool.Release()
-		
+
 		config := &Config{
 			TargetDir:   "/tmp/test",
 			GitHubToken: "test-token",
 			Concurrency: 3,
 		}
-		
+
 		var processedOrgs []string
 		var mu sync.Mutex
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			mu.Lock()
 			processedOrgs = append(processedOrgs, org)
@@ -519,19 +519,19 @@ func TestProcessBatch(t *testing.T) {
 			Orgs:        []string{"org1", "org2"},
 			BatchNumber: 1,
 		}
-		
+
 		pool, err := ants.NewPool(2, ants.WithOptions(ants.Options{
 			PreAlloc:    true,
 			Nonblocking: false,
 		}))
 		require.NoError(t, err)
 		defer pool.Release()
-		
+
 		config := &Config{
 			TargetDir:   "/tmp/test",
 			Concurrency: 2,
 		}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			if org == "org1" {
 				return fmt.Errorf("cloning failed for %s", org)
@@ -554,16 +554,16 @@ func TestProcessBatch(t *testing.T) {
 			Orgs:        []string{},
 			BatchNumber: 1,
 		}
-		
+
 		pool, err := ants.NewPool(1, ants.WithOptions(ants.Options{
 			PreAlloc:    true,
 			Nonblocking: false,
 		}))
 		require.NoError(t, err)
 		defer pool.Release()
-		
+
 		config := &Config{Concurrency: 1}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return nil
 		}
@@ -582,7 +582,7 @@ func TestProcessBatch(t *testing.T) {
 			Orgs:        []string{"org1"},
 			BatchNumber: 1,
 		}
-		
+
 		// Create a pool with minimal capacity
 		pool, err := ants.NewPool(1, ants.WithOptions(ants.Options{
 			PreAlloc:    true,
@@ -590,9 +590,9 @@ func TestProcessBatch(t *testing.T) {
 		}))
 		require.NoError(t, err)
 		defer pool.Release()
-		
+
 		config := &Config{Concurrency: 1}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return nil
 		}
@@ -612,7 +612,7 @@ func createTestPool(capacity int) (*ants.Pool, error) {
 	if capacity <= 0 {
 		capacity = 1
 	}
-	
+
 	return ants.NewPool(capacity, ants.WithOptions(ants.Options{
 		PreAlloc:    true,
 		Nonblocking: false,
@@ -630,7 +630,7 @@ func TestWorkflowProperties(t *testing.T) {
 			batchSize := rapid.IntRange(1, 10).Draw(t, "batchSize")
 
 			ctx := context.Background()
-			
+
 			mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 				return &Config{
 					Orgs:        orgs,
@@ -640,7 +640,7 @@ func TestWorkflowProperties(t *testing.T) {
 					GitHubToken: rapid.String().Draw(t, "token"),
 				}, nil
 			}
-			
+
 			mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 				return nil
 			}
@@ -656,24 +656,24 @@ func TestWorkflowProperties(t *testing.T) {
 		rapid.Check(t, func(t *rapid.T) {
 			orgs := rapid.SliceOfN(rapid.StringMatching(`^[a-zA-Z0-9_-]+$`), 0, 10).Draw(t, "orgs")
 			batchNumber := rapid.IntRange(1, 100).Draw(t, "batchNumber")
-			
+
 			batch := Batch{
 				Orgs:        orgs,
 				BatchNumber: batchNumber,
 			}
-			
+
 			ctx := context.Background()
 			pool, err := createTestPool(len(orgs) + 1)
 			if err != nil {
 				t.Skip("Failed to create pool")
 			}
 			defer pool.Release()
-			
+
 			config := &Config{
 				TargetDir:   "/tmp/test",
 				Concurrency: len(orgs) + 1,
 			}
-			
+
 			// Cloner that always fails
 			mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 				return fmt.Errorf("failed for %s", org)
@@ -694,7 +694,7 @@ func TestWorkflowIntegration(t *testing.T) {
 		ctx := context.Background()
 		var processedOrgs []string
 		var mu sync.Mutex
-		
+
 		mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 			return &Config{
 				Orgs:        []string{"org1", "org2", "org3", "org4", "org5"},
@@ -704,12 +704,12 @@ func TestWorkflowIntegration(t *testing.T) {
 				GitHubToken: "integration-token",
 			}, nil
 		}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			mu.Lock()
 			processedOrgs = append(processedOrgs, org)
 			mu.Unlock()
-			
+
 			// Simulate some work
 			time.Sleep(10 * time.Millisecond)
 			return nil
@@ -731,7 +731,7 @@ func TestWorkflowIntegration(t *testing.T) {
 		ctx := context.Background()
 		var processedOrgs []string
 		var mu sync.Mutex
-		
+
 		mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 			return &Config{
 				Orgs:        []string{"org1", "org2", "org3"},
@@ -740,12 +740,12 @@ func TestWorkflowIntegration(t *testing.T) {
 				BatchSize:   2,
 			}, nil
 		}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			mu.Lock()
 			processedOrgs = append(processedOrgs, org)
 			mu.Unlock()
-			
+
 			if org == "org2" {
 				return fmt.Errorf("failed for %s", org)
 			}
@@ -773,10 +773,10 @@ func TestWorkflowStress(t *testing.T) {
 		for i := 0; i < numOrgs; i++ {
 			orgs[i] = fmt.Sprintf("org%d", i)
 		}
-		
+
 		var processedCount int32
 		var mu sync.Mutex
-		
+
 		mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 			return &Config{
 				Orgs:        orgs,
@@ -785,12 +785,12 @@ func TestWorkflowStress(t *testing.T) {
 				BatchSize:   10,
 			}, nil
 		}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			mu.Lock()
 			processedCount++
 			mu.Unlock()
-			
+
 			// Simulate minimal work
 			time.Sleep(1 * time.Millisecond)
 			return nil
@@ -811,7 +811,7 @@ func TestWorkflowStress(t *testing.T) {
 		// Given
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
-		
+
 		mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 			return &Config{
 				Orgs:        []string{"org1", "org2", "org3"},
@@ -820,7 +820,7 @@ func TestWorkflowStress(t *testing.T) {
 				BatchSize:   1,
 			}, nil
 		}
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			// Simulate long-running operation
 			time.Sleep(200 * time.Millisecond)
@@ -842,7 +842,7 @@ func TestWorkflowMutations(t *testing.T) {
 		// Given
 		ctx := context.Background()
 		var nilLoader ConfigLoader = nil
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			return nil
 		}
@@ -856,7 +856,7 @@ func TestWorkflowMutations(t *testing.T) {
 	t.Run("Given nil cloner When executing workflow Then should handle gracefully", func(t *testing.T) {
 		// Given
 		ctx := context.Background()
-		
+
 		mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 			return &Config{
 				Orgs:        []string{"org1"},
@@ -865,7 +865,7 @@ func TestWorkflowMutations(t *testing.T) {
 				BatchSize:   1,
 			}, nil
 		}
-		
+
 		var nilCloner OrgCloner = nil
 
 		// When/Then - should handle gracefully or panic appropriately
@@ -884,11 +884,11 @@ func TestWorkflowMutations(t *testing.T) {
 		for i, config := range extremeConfigs {
 			t.Run(fmt.Sprintf("extreme_config_%d", i), func(t *testing.T) {
 				ctx := context.Background()
-				
+
 				mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 					return config, nil
 				}
-				
+
 				mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 					return nil
 				}
@@ -907,7 +907,7 @@ func TestWorkflowEdgeCases(t *testing.T) {
 	t.Run("Given workflow with very large batch sizes When executing Then should handle correctly", func(t *testing.T) {
 		// Given
 		ctx := context.Background()
-		
+
 		mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 			return &Config{
 				Orgs:        []string{"org1", "org2", "org3"},
@@ -916,10 +916,10 @@ func TestWorkflowEdgeCases(t *testing.T) {
 				BatchSize:   1000, // Much larger than number of orgs
 			}, nil
 		}
-		
+
 		var processedOrgs []string
 		var mu sync.Mutex
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			mu.Lock()
 			processedOrgs = append(processedOrgs, org)
@@ -938,7 +938,7 @@ func TestWorkflowEdgeCases(t *testing.T) {
 	t.Run("Given workflow with single org When executing Then should create single batch", func(t *testing.T) {
 		// Given
 		ctx := context.Background()
-		
+
 		mockLoader := func(ctx context.Context, configPath string) (*Config, error) {
 			return &Config{
 				Orgs:        []string{"single-org"},
@@ -947,10 +947,10 @@ func TestWorkflowEdgeCases(t *testing.T) {
 				BatchSize:   1,
 			}, nil
 		}
-		
+
 		var processedOrgs []string
 		var mu sync.Mutex
-		
+
 		mockCloner := func(ctx context.Context, org, targetDir, token string, concurrency int) error {
 			mu.Lock()
 			processedOrgs = append(processedOrgs, org)

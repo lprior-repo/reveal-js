@@ -174,7 +174,7 @@ func TestCalculateProgress(t *testing.T) {
 		assert.Equal(t, 5, update.CompletedOrgs)
 		assert.Equal(t, 10, update.TotalOrgs)
 		assert.True(t, update.ElapsedTime >= 20*time.Second)
-		
+
 		// ETA calculation: avgTimePerOrg = 20s / 5 orgs = 4s per org
 		// remainingOrgs = 10 - 5 = 5 orgs
 		// eta = 4s * 5 = 20s
@@ -205,7 +205,7 @@ func TestCalculateProgress(t *testing.T) {
 		assert.Equal(t, 1, update.CompletedOrgs)
 		assert.Equal(t, 3, update.TotalOrgs)
 		assert.True(t, update.ElapsedTime >= 5*time.Second)
-		
+
 		// ETA calculation: avgTimePerOrg = 5s / 1 org = 5s per org
 		// remainingOrgs = 3 - 1 = 2 orgs
 		// eta = 5s * 2 = 10s
@@ -221,7 +221,7 @@ func TestCreateProgressReporter(t *testing.T) {
 		// Given
 		var loggedMessages []string
 		var loggedAttrs [][]slog.Attr
-		
+
 		logInfo := func(msg string, attrs ...slog.Attr) {
 			loggedMessages = append(loggedMessages, msg)
 			loggedAttrs = append(loggedAttrs, attrs)
@@ -232,7 +232,7 @@ func TestCreateProgressReporter(t *testing.T) {
 
 		// Then
 		assert.NotNil(t, reporter)
-		
+
 		// Test that reporter can be called
 		update := ProgressUpdate{
 			Org:           "test-org",
@@ -243,15 +243,15 @@ func TestCreateProgressReporter(t *testing.T) {
 			EstimatedETA:  60 * time.Second,
 			Status:        "processing",
 		}
-		
+
 		assert.NotPanics(t, func() {
 			reporter(update)
 		})
-		
+
 		// Verify logging was called
 		assert.Len(t, loggedMessages, 1)
 		assert.Equal(t, "Progress update", loggedMessages[0])
-		
+
 		// Verify attributes were logged
 		assert.Len(t, loggedAttrs, 1)
 		attrs := loggedAttrs[0]
@@ -261,7 +261,7 @@ func TestCreateProgressReporter(t *testing.T) {
 	t.Run("Given progress update When reporting Then should log correct percentage", func(t *testing.T) {
 		// Given
 		var loggedPercentage float64
-		
+
 		logInfo := func(msg string, attrs ...slog.Attr) {
 			for _, attr := range attrs {
 				if attr.Key == "percentage" {
@@ -269,9 +269,9 @@ func TestCreateProgressReporter(t *testing.T) {
 				}
 			}
 		}
-		
+
 		reporter := createProgressReporter(logInfo)
-		
+
 		update := ProgressUpdate{
 			Org:           "test-org",
 			BatchNumber:   1,
@@ -293,7 +293,7 @@ func TestCreateProgressReporter(t *testing.T) {
 	t.Run("Given complete progress update When reporting Then should log 100 percent", func(t *testing.T) {
 		// Given
 		var loggedPercentage float64
-		
+
 		logInfo := func(msg string, attrs ...slog.Attr) {
 			for _, attr := range attrs {
 				if attr.Key == "percentage" {
@@ -301,9 +301,9 @@ func TestCreateProgressReporter(t *testing.T) {
 				}
 			}
 		}
-		
+
 		reporter := createProgressReporter(logInfo)
-		
+
 		update := ProgressUpdate{
 			Org:           "final-org",
 			BatchNumber:   3,
@@ -325,7 +325,7 @@ func TestCreateProgressReporter(t *testing.T) {
 	t.Run("Given zero total orgs When reporting Then should handle division by zero", func(t *testing.T) {
 		// Given
 		var loggedPercentage float64
-		
+
 		logInfo := func(msg string, attrs ...slog.Attr) {
 			for _, attr := range attrs {
 				if attr.Key == "percentage" {
@@ -333,9 +333,9 @@ func TestCreateProgressReporter(t *testing.T) {
 				}
 			}
 		}
-		
+
 		reporter := createProgressReporter(logInfo)
-		
+
 		update := ProgressUpdate{
 			Org:           "test-org",
 			BatchNumber:   1,
@@ -350,7 +350,7 @@ func TestCreateProgressReporter(t *testing.T) {
 		assert.NotPanics(t, func() {
 			reporter(update)
 		})
-		
+
 		// Should result in NaN or Inf, which is acceptable for edge case
 		assert.True(t, loggedPercentage != loggedPercentage || loggedPercentage == 0) // NaN != NaN or 0
 	})
@@ -358,13 +358,13 @@ func TestCreateProgressReporter(t *testing.T) {
 	t.Run("Given progress reporter When called multiple times Then should handle all calls", func(t *testing.T) {
 		// Given
 		var callCount int
-		
+
 		logInfo := func(msg string, attrs ...slog.Attr) {
 			callCount++
 		}
-		
+
 		reporter := createProgressReporter(logInfo)
-		
+
 		updates := []ProgressUpdate{
 			{Org: "org1", CompletedOrgs: 1, TotalOrgs: 5},
 			{Org: "org2", CompletedOrgs: 2, TotalOrgs: 5},
@@ -401,7 +401,7 @@ func TestProgressTrackingProperties(t *testing.T) {
 			processedOrgs := rapid.IntRange(0, totalOrgs).Draw(t, "processedOrgs")
 			totalBatches := rapid.IntRange(1, 100).Draw(t, "totalBatches")
 			processedBatches := rapid.IntRange(0, totalBatches).Draw(t, "processedBatches")
-			
+
 			tracker := ProgressTracker{
 				TotalOrgs:        totalOrgs,
 				ProcessedOrgs:    processedOrgs,
@@ -440,9 +440,9 @@ func TestProgressTrackingProperties(t *testing.T) {
 			logInfo := func(msg string, attrs ...slog.Attr) {
 				// No-op
 			}
-			
+
 			reporter := createProgressReporter(logInfo)
-			
+
 			update := ProgressUpdate{
 				Org:           rapid.String().Draw(t, "org"),
 				BatchNumber:   rapid.IntRange(0, 1000).Draw(t, "batchNumber"),
@@ -468,11 +468,11 @@ func TestProgressTrackingIntegration(t *testing.T) {
 		totalOrgs := 5
 		totalBatches := 2
 		var progressUpdates []ProgressUpdate
-		
+
 		logInfo := func(msg string, attrs ...slog.Attr) {
 			// Capture progress updates for verification
 		}
-		
+
 		tracker := createProgressTracker(totalOrgs, totalBatches)
 		reporter := createProgressReporter(logInfo)
 
@@ -481,10 +481,10 @@ func TestProgressTrackingIntegration(t *testing.T) {
 			tracker.ProcessedOrgs = i
 			tracker.CurrentOrg = fmt.Sprintf("org%d", i)
 			tracker.CurrentBatch = ((i - 1) / 3) + 1 // Simulate batch progression
-			
+
 			update := calculateProgress(tracker)
 			progressUpdates = append(progressUpdates, update)
-			
+
 			// Report progress
 			assert.NotPanics(t, func() {
 				reporter(update)
@@ -493,13 +493,13 @@ func TestProgressTrackingIntegration(t *testing.T) {
 
 		// Then
 		assert.Len(t, progressUpdates, 5)
-		
+
 		// Verify first update
 		firstUpdate := progressUpdates[0]
 		assert.Equal(t, "org1", firstUpdate.Org)
 		assert.Equal(t, 1, firstUpdate.CompletedOrgs)
 		assert.Equal(t, 5, firstUpdate.TotalOrgs)
-		
+
 		// Verify last update
 		lastUpdate := progressUpdates[4]
 		assert.Equal(t, "org5", lastUpdate.Org)
@@ -511,27 +511,27 @@ func TestProgressTrackingIntegration(t *testing.T) {
 	t.Run("Given progress tracking with realistic timing When simulating batches Then should calculate accurate ETAs", func(t *testing.T) {
 		// Given
 		tracker := createProgressTracker(10, 3)
-		
+
 		// Simulate processing with known timing
 		baseTime := time.Now()
 		tracker.StartTime = baseTime
-		
+
 		// When - simulate after 30 seconds with 3 orgs processed
 		simulatedNow := baseTime.Add(30 * time.Second)
 		tracker.ProcessedOrgs = 3
 		tracker.CurrentOrg = "org3"
 		tracker.CurrentBatch = 1
-		
+
 		// Manually calculate elapsed time for consistent testing
 		tracker.StartTime = simulatedNow.Add(-30 * time.Second)
-		
+
 		update := calculateProgress(tracker)
 
 		// Then
 		assert.Equal(t, 3, update.CompletedOrgs)
 		assert.Equal(t, 10, update.TotalOrgs)
 		assert.True(t, update.ElapsedTime >= 30*time.Second)
-		
+
 		// ETA should be approximately 70 seconds (7 remaining orgs * 10 seconds each)
 		expectedETA := 70 * time.Second
 		assert.True(t, update.EstimatedETA >= expectedETA-5*time.Second && update.EstimatedETA <= expectedETA+5*time.Second)
@@ -546,7 +546,7 @@ func TestProgressTrackingStress(t *testing.T) {
 		logInfo := func(msg string, attrs ...slog.Attr) {
 			updateCount++
 		}
-		
+
 		reporter := createProgressReporter(logInfo)
 		numUpdates := 10000
 
@@ -575,11 +575,11 @@ func TestProgressTrackingStress(t *testing.T) {
 		// Given
 		tracker := createProgressTracker(1000, 10)
 		var updateCount int
-		
+
 		logInfo := func(msg string, attrs ...slog.Attr) {
 			updateCount++
 		}
-		
+
 		reporter := createProgressReporter(logInfo)
 		numGoroutines := 10
 		done := make(chan bool, numGoroutines)
@@ -610,10 +610,10 @@ func TestProgressTrackingStress(t *testing.T) {
 func TestProgressTrackingMutations(t *testing.T) {
 	t.Run("Given invalid tracker state When calculating progress Then should handle gracefully", func(t *testing.T) {
 		invalidTrackers := []ProgressTracker{
-			{TotalOrgs: 0, ProcessedOrgs: 1, StartTime: time.Now()},           // More processed than total
-			{TotalOrgs: -1, ProcessedOrgs: 0, StartTime: time.Now()},          // Negative total
-			{TotalOrgs: 10, ProcessedOrgs: -1, StartTime: time.Now()},         // Negative processed
-			{TotalOrgs: 10, ProcessedOrgs: 5, StartTime: time.Time{}},         // Zero start time
+			{TotalOrgs: 0, ProcessedOrgs: 1, StartTime: time.Now()},   // More processed than total
+			{TotalOrgs: -1, ProcessedOrgs: 0, StartTime: time.Now()},  // Negative total
+			{TotalOrgs: 10, ProcessedOrgs: -1, StartTime: time.Now()}, // Negative processed
+			{TotalOrgs: 10, ProcessedOrgs: 5, StartTime: time.Time{}}, // Zero start time
 		}
 
 		for i, tracker := range invalidTrackers {

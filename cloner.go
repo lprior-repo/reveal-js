@@ -9,15 +9,16 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 )
 
 // CloneResult represents the outcome of a cloning operation
 type CloneResult struct {
-	Org          string
-	RepoCount    int
+	Org            string
+	RepoCount      int
 	ProcessedRepos int
-	Output       []string
-	Success      bool
+	Output         []string
+	Success        bool
 }
 
 // OutputProcessor handles command output processing
@@ -43,8 +44,13 @@ func CreateGhorgOrgClonerWithProgress(progressFunc ProgressFunc) OrgCloner {
 	dirPreparer := createDirectoryPreparer()
 	cmdExecutor := createCommandExecutor()
 	outputCapturer := createOutputCapturer()
-	
+
 	return func(ctx context.Context, org, targetDir, token string, concurrency int) error {
+		logInfo, _ := createLoggers()
+		defer trackExecutionTime(logInfo, "cloneOrg_"+org)()
+		
+		start := time.Now()
+		
 		// Check context cancellation early
 		if err := checkContextCancellation(ctx, org); err != nil {
 			return err
@@ -69,7 +75,19 @@ func CreateGhorgOrgClonerWithProgress(progressFunc ProgressFunc) OrgCloner {
 		}
 
 		// Log success and return result
-		return logCloneCompletion(result, expandedDir)
+		err = logCloneCompletion(result, expandedDir)
+		
+		// Log timing information
+		elapsed := time.Since(start)
+		logInfo("Clone operation completed",
+			slog.String("org", org),
+			slog.String("duration", elapsed.String()),
+			slog.Int("repo_count", result.RepoCount),
+			slog.Int("processed_repos", result.ProcessedRepos),
+			slog.Bool("success", result.Success),
+			slog.String("operation", "clone_timing"))
+		
+		return err
 	}
 }
 
@@ -108,10 +126,7 @@ func createCommandExecutor() CommandExecutor {
 		cmd := exec.CommandContext(ctx, "ghorg", args...)
 		cmd.Env = os.Environ()
 
-		if err := cmd.Start(); err != nil {
-			return nil, createError("failed to start ghorg command for org %s: %v", org, err)
-		}
-
+		// Don't start the command here - let the output capturer handle it
 		return cmd, nil
 	}
 }
@@ -127,6 +142,11 @@ func createOutputCapturer() OutputCapturer {
 		stderr, err := cmd.StderrPipe()
 		if err != nil {
 			return CloneResult{}, createError("failed to create stderr pipe for org %s: %v", org, err)
+		}
+
+		// Start the command after pipes are set up
+		if err := cmd.Start(); err != nil {
+			return CloneResult{}, createError("failed to start ghorg command for org %s: %v", org, err)
 		}
 
 		// Process outputs using functional approach
@@ -160,6 +180,9 @@ func processCommandOutput(stdout, stderr io.Reader, org string, progressFunc Pro
 		if strings.Contains(line, "repos found") {
 			if count := extractRepoCount(line); count > 0 {
 				repoCount = count
+				// Track repository discovery in metrics
+				metrics := getCurrentMetrics()
+				metrics.TrackRepoDiscovery(count)
 				logInfo("Repository count detected",
 					slog.String("org", org),
 					slog.Int("repo_count", repoCount),
@@ -171,6 +194,9 @@ func processCommandOutput(stdout, stderr io.Reader, org string, progressFunc Pro
 		if isRepoProcessingLine(line) {
 			if repoName := extractRepoName(line); repoName != "" {
 				processedRepos++
+				// Track repository processing in metrics
+				metrics := getCurrentMetrics()
+				metrics.TrackRepoProcessed(1)
 				sendProgressUpdate(progressFunc, org, processedRepos, repoCount)
 			}
 		}
